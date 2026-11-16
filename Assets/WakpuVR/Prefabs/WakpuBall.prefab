@@ -342,6 +342,7 @@ GameObject:
   - component: {fileID: 6273761661850085956}
   - component: {fileID: 1669922098766523039}
   - component: {fileID: 5425348929686486780}
+  - component: {fileID: 6704829021027777091}
   m_Layer: 0
   m_Name: WakpuBall
   m_TagString: Untagged
@@ -671,6 +672,19 @@ MonoBehaviour:
   squeezeDuration: 0.13
   squeezeAmount: 0.14
   destroyDelay: 0.18
+--- !u!114 &6704829021027777091
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5079465932590892501}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 978f2ef6456d83b4c8d13979167551ac, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  bag: {fileID: 0}
 --- !u!1 &5541507762928428574
 GameObject:
   m_ObjectHideFlags: 0
