@@ -12,6 +12,13 @@ namespace WakpuVR
     [DisallowMultipleComponent]
     public sealed class InventoryUI : MonoBehaviour
     {
+        [Header("Main Gate Key")]
+        [SerializeField] private MainGateKeyUse mainGateKeyUse;
+        [SerializeField] private ItemPopup itemPopup;
+
+        private bool hasMainGateKey;
+        public bool HasMainGateKey => hasMainGateKey;
+
         [Header("Head gesture")]
         [SerializeField] private Transform head;
         [SerializeField, Range(0f, 89f)] private float openDownAngle = 50f;
@@ -55,6 +62,19 @@ namespace WakpuVR
             public RectTransform rect;
             public Image image;
             public InventoryBallItem item;
+            public bool isMainGateKey;
+        }
+
+        public bool AcquireMainGateKey()
+        {
+            if (hasMainGateKey) return false;
+
+            hasMainGateKey = true;
+            Rebuild();
+
+            itemPopup?.Show("정문 열쇠를 획득했습니다!");
+
+            return true;
         }
 
         public void Configure(Transform camera, RectTransform window, RectTransform list, RectTransform template,
@@ -167,8 +187,22 @@ namespace WakpuVR
                         break;
                     }
             if (hovered != null) hovered.image.color = new Color(0.36f, 0.25f, 0.58f, 0.97f);
-            if (grip?.action != null && grip.action.WasPressedThisFrame() && hovered != null && interactor != null && !HandHasSelection(controller))
-                hovered.item.Equip(interactor, controller);
+            if (grip?.action != null &&
+                grip.action.WasPressedThisFrame() &&
+                hovered != null)
+            {
+                if (hovered.isMainGateKey)
+                {
+                    if (mainGateKeyUse != null)
+                        mainGateKeyUse.TryUseKey();
+                }
+                else if (hovered.item != null &&
+                        interactor != null &&
+                        !HandHasSelection(controller))
+                {
+                    hovered.item.Equip(interactor, controller);
+                }
+            }
         }
 
         private bool HandHasSelection(Transform controller)
@@ -201,32 +235,101 @@ namespace WakpuVR
             if (stored.Remove(item)) Rebuild();
         }
 
+        
         private void Rebuild()
         {
             foreach (Slot slot in slots)
-                if (slot.rect != null) Destroy(slot.rect.gameObject);
-            slots.Clear();
-            if (slotTemplate == null || content == null) return;
-            int totalPages = Mathf.Max(1, Mathf.CeilToInt(stored.Count / (float)SlotsPerPage));
-            page = Mathf.Clamp(page, 0, totalPages - 1);
-            if (pageLabel != null) pageLabel.text = $"{page + 1} / {totalPages}   LEFT / RIGHT PRIMARY: PAGE";
-            int end = Mathf.Min(stored.Count, (page + 1) * SlotsPerPage);
-            for (int index = page * SlotsPerPage; index < end; index++)
             {
-                InventoryBallItem item = stored[index];
-                if (item == null) continue;
+                if (slot.rect != null)
+                    Destroy(slot.rect.gameObject);
+            }
+
+            slots.Clear();
+
+            if (slotTemplate == null || content == null)
+                return;
+
+            int totalItems = stored.Count + (hasMainGateKey ? 1 : 0);
+
+            int totalPages = Mathf.Max(
+                1,
+                Mathf.CeilToInt(totalItems / (float)SlotsPerPage)
+            );
+
+            page = Mathf.Clamp(page, 0, totalPages - 1);
+
+            if (pageLabel != null)
+            {
+                pageLabel.text =
+                    $"{page + 1} / {totalPages}   LEFT / RIGHT PRIMARY: PAGE";
+            }
+
+            int start = page * SlotsPerPage;
+            int end = Mathf.Min(totalItems, start + SlotsPerPage);
+
+            for (int index = start; index < end; index++)
+            {
                 RectTransform rect = Instantiate(slotTemplate, content);
                 rect.gameObject.SetActive(true);
-                rect.name = $"WakpuBall {item.Id.Substring(0, 6)}";
+
+                Image slotImage = rect.GetComponent<Image>();
                 Text label = rect.GetComponentInChildren<Text>(true);
-                if (label != null) label.text = $"WAKPU BALL\n{item.Ball.RemainingUses} / {item.Ball.InitialUses}";
-                slots.Add(new Slot { rect = rect, image = rect.GetComponent<Image>(), item = item });
+
+                if (index < stored.Count)
+                {
+                    InventoryBallItem item = stored[index];
+
+                    if (item == null)
+                    {
+                        Destroy(rect.gameObject);
+                        continue;
+                    }
+
+                    rect.name = $"WakpuBall {item.Id.Substring(0, 6)}";
+
+                    if (label != null)
+                    {
+                        label.text =
+                            $"WAKPU BALL\n" +
+                            $"{item.Ball.RemainingUses} / " +
+                            $"{item.Ball.InitialUses}";
+                    }
+
+                    slots.Add(new Slot
+                    {
+                        rect = rect,
+                        image = slotImage,
+                        item = item,
+                        isMainGateKey = false
+                    });
+                }
+                else
+                {
+                    rect.name = "MainGateKey";
+
+                    if (label != null)
+                        label.text = "MAIN GATE KEY";
+
+                    slots.Add(new Slot
+                    {
+                        rect = rect,
+                        image = slotImage,
+                        item = null,
+                        isMainGateKey = true
+                    });
+                }
             }
         }
 
+
         private void ChangePage(int delta)
         {
-            int maxPage = Mathf.Max(0, Mathf.CeilToInt(stored.Count / (float)SlotsPerPage) - 1);
+            int totalItems = stored.Count + (hasMainGateKey ? 1 : 0);
+
+            int maxPage = Mathf.Max(
+                0,
+                Mathf.CeilToInt(totalItems / (float)SlotsPerPage) - 1
+            );
             int next = Mathf.Clamp(page + delta, 0, maxPage);
             if (next == page) return;
             page = next;
